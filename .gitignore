@@ -1,1 +1,4 @@
 .idea
+./api-gateway/go.sum
+./task-processor/go.sum
+./notifier/go.sum
