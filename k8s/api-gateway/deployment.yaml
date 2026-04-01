@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: event-notification
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: eventnotifiersystem-api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: db-dsn
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: rabbitmq-url
+            - name: RABBITMQ_EXCHANGE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: tasks-exchange
+            - name: RABBITMQ_ROUTING_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: tasks-routing-key
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
