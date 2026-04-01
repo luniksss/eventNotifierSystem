@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: event-notification
+data:
+  tasks-exchange: "tasks"
+  notifications-exchange: "notifications"
+  tasks-routing-key: "task.created"
+  notifications-routing-key: "notification.send"
