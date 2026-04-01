@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifier
+  namespace: event-notification
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notifier
+  template:
+    metadata:
+      labels:
+        app: notifier
+    spec:
+      containers:
+        - name: notifier
+          image: eventnotifiersystem-notifier:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: rabbitmq-url
