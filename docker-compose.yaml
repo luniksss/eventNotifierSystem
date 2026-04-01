@@ -1,0 +1,64 @@
+version: '3.8'
+services:
+  notifier-mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tasksdb
+      MYSQL_USER: test
+      MYSQL_PASSWORD: 1234
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  notifier-rabbitmq:
+    image: rabbitmq:3.12-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      DB_DSN: "test:1234@tcp(notifier-mysql:3306)/tasksdb?parseTime=true"
+      RABBITMQ_URL: "amqp://guest:guest@notifier-rabbitmq:5672/"
+      RABBITMQ_EXCHANGE: "tasks"
+      RABBITMQ_ROUTING_KEY: "task.created"
+    depends_on:
+      notifier-mysql:
+        condition: service_healthy
+      notifier-rabbitmq:
+        condition: service_healthy
+
+  task-processor:
+    build: ./task-processor
+    environment:
+      RABBITMQ_URL: "amqp://guest:guest@notifier-rabbitmq:5672/"
+      NOTIFICATIONS_EXCHANGE: "notifications"
+      TASK_QUEUE: "task-processor-queue"
+      TASK_ROUTING_KEY: "task.created"
+    depends_on:
+      notifier-rabbitmq:
+        condition: service_healthy
+
+  notifier:
+    build: ./notifier
+    environment:
+      RABBITMQ_URL: "amqp://guest:guest@notifier-rabbitmq:5672/"
+    depends_on:
+      notifier-rabbitmq:
+        condition: service_healthy
